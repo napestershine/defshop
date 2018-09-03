@@ -1,0 +1,9 @@
+Client
+
+User: codeistalk@gmail.com
+pass: infete
+
+Admin:
+
+user: codeistalk@gmail.com
+pass: infete

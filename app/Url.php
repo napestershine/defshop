@@ -1,0 +1,253 @@
+<?php
+
+namespace App;
+
+/**
+ * Class Url
+ * @package App
+ */
+class Url
+{
+
+    /**
+     * @var string
+     */
+    public $key_page = 'page';
+
+    /**
+     * @var array
+     */
+    public $key_modules = array('panel');
+
+    /**
+     * @var string
+     */
+    public $module = 'front';
+
+    /**
+     * @var string
+     */
+    public $main = 'index';
+
+    /**
+     * @var string
+     */
+    public $cpage = 'index';
+
+    /**
+     * @var string
+     */
+    public $c = 'login';
+
+    /**
+     * @var string
+     */
+    public $a = 'index';
+
+    /**
+     * @var array
+     */
+    public $params = array();
+
+    /**
+     * @var array
+     */
+    public $paramsRaw = array();
+
+    /**
+     * @var
+     */
+    public $stringRaw;
+
+    /**
+     * Url constructor.
+     */
+    public function __construct()
+    {
+        $this->_process();
+    }
+
+    /**
+     *
+     */
+    private function _process()
+    {
+        $uri = $_SERVER['REQUEST_URI'];
+
+        if (!empty($uri)) {
+            $uriQ = explode('?', $uri);
+            $uri = $uriQ[0];
+            if (count($uriQ) > 1) {
+                $this->stringRaw = $uriQ[1];
+                $uriRaw = explode('&', $uriQ[1]);
+                if (count($uriRaw) > 1) {
+                    foreach ($uriRaw as $key => $row) {
+                        $this->splitRaw($row);
+                    }
+                } else {
+                    $this->splitRaw($uriRaw[0]);
+                }
+            }
+            $uri = Helper::clearString($uri, PAGE_EXT);
+            $firstChar = substr($uri, 0, 1);
+            if ($firstChar == '/') {
+                $uri = substr($uri, 1);
+            }
+            $lastChar = substr($uri, -1);
+            if ($lastChar == '/') {
+                $uri = substr($uri, 0, -1);
+            }
+            if (!empty($uri)) {
+                $uri = explode('/', $uri);
+                $first = array_shift($uri);
+                if (in_array($first, $this->key_modules)) {
+                    $this->module = $first;
+                    $first = empty($uri) ? $this->main : array_shift($uri);
+                }
+                $this->main = $first;
+                $this->cpage = $this->main;
+                if (count($uri) > 1) {
+                    $pairs = array();
+                    foreach ($uri as $key => $value) {
+                        $pairs[] = $value;
+                        if (count($pairs) > 1) {
+                            if (!Helper::isEmpty($pairs[1])) {
+                                if ($pairs[0] == $this->key_page) {
+                                    $this->cpage = $pairs[1];
+                                } else if ($pairs[0] == 'c') {
+                                    $this->c = $pairs[1];
+                                } else if ($pairs[0] == 'a') {
+                                    $this->a = $pairs[1];
+                                }
+                                $this->params[$pairs[0]] = $pairs[1];
+                            }
+                            $pairs = array();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * @param null $item
+     */
+    public function splitRaw($item = null)
+    {
+        if (!empty($item) && !is_array($item)) {
+            $itemRaw = explode('=', $item);
+            if (count($itemRaw) > 1 && !Helper::isEmpty($itemRaw[1])) {
+                $this->paramsRaw[$itemRaw[0]] = $itemRaw[1];
+            }
+        }
+    }
+
+
+    /**
+     * @param null $param
+     * @return mixed
+     */
+    public function getRaw($param = null)
+    {
+        if (!empty($param) && array_key_exists($param, $this->paramsRaw)) {
+            return $this->paramsRaw[$param];
+        }
+    }
+
+
+    /**
+     * @param null $param
+     * @return mixed
+     */
+    public function get($param = null)
+    {
+        if (!empty($param) && array_key_exists($param, $this->params)) {
+            return $this->params[$param];
+        }
+    }
+
+
+    /**
+     * @param string $main
+     * @param array $params
+     * @return string
+     */
+    public function href($main = null, $params = null)
+    {
+        if (!empty($main)) {
+            $out = array($main);
+            if (!empty($params) && is_array($params)) {
+                foreach ($params as $key => $value) {
+                    $out[] = $value;
+                }
+            }
+            return '/' . implode('/', $out) . PAGE_EXT;
+        }
+    }
+
+    /**
+     * @param null $exclude
+     * @param bool $extension
+     * @param null $add
+     * @return string
+     */
+    public function getCurrent($exclude = null, $extension = false, $add = null)
+    {
+        $out = array();
+        if ($this->module !== 'front') {
+            $out[] = $this->module;
+        }
+        $out[] = $this->main;
+        if (!empty($this->params)) {
+            if (!empty($exclude)) {
+                $exclude = Helper::makeArray($exclude);
+                foreach ($this->params as $key => $value) {
+                    if (!in_array($key, $exclude)) {
+                        $out[] = $key;
+                        $out[] = $value;
+                    }
+                }
+            } else {
+                foreach ($this->params as $key => $value) {
+                    $out[] = $key;
+                    $out[] = $value;
+                }
+            }
+        }
+        if (!empty($add)) {
+            $add = Helper::makeArray($add);
+            foreach ($add as $item) {
+                $out[] = $item;
+            }
+        }
+        $url = '/' . implode('/', $out);
+        $url .= $extension ? PAGE_EXT : null;
+        return $url;
+    }
+
+    /**
+     * @return string
+     */
+    public function __toString()
+    {
+        $out = '<div>';
+        $out .= '<strong>$module:</strong><br />' . $this->module;
+        $out .= '<br />';
+        $out .= '<strong>$main:</strong><br />' . $this->main;
+        $out .= '<br />';
+        $out .= '<strong>$cpage:</strong><br />' . $this->cpage;
+        $out .= '<br />';
+        $out .= '<strong>$params:</strong><br />';
+        $out .= Helper::printArray($this->params);
+        $out .= '<br />';
+        $out .= '<strong>$paramsRaw:</strong><br />';
+        $out .= Helper::printArray($this->paramsRaw);
+        $out .= '<br />';
+        $out .= '<strong>$stringRaw:</strong><br />' . $this->stringRaw;
+        $out .= '</div>';
+
+        return $out;
+
+    }
+
+}
